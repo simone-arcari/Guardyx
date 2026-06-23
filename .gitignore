@@ -1,1 +1,47 @@
 *.DS_Store
+.pio/*
+
+# PlatformIO
+.vscode/
+build/
+*.bin
+*.elf
+
+# Configurazione sensibile (non committare)
+config.h
+.env
+.env.local
+
+# IDE e editor
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Dependencies
+.gcc-flags.json
+
+# Compiler
+.cache/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Testing
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.out
+
+# Sistema operativo
+.Thumbs.db
