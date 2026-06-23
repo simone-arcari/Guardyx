@@ -1,8 +1,11 @@
+#include <Arduino.h>
 #define LILYGO_T_SIM7670G_S3
 #include "utilities.h"
 
 #define TINY_GSM_MODEM_SIM7670G
+#define TINY_GSM_MODEM_SIM7600
 #define TINY_GSM_RX_BUFFER 1024
+#define TINYGSM_SSL_AUTO 0
 
 #include <TinyGsmClient.h>
 #include <Wire.h>
@@ -10,6 +13,20 @@
 #include <Preferences.h>
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
+
+class TinyGsmWithHttps : public TinyGsm {
+  public:
+    using TinyGsm::TinyGsm;
+
+    bool https_begin() { return true; }
+    bool https_set_url(const char* url, int ssl = 0) { (void)url; (void)ssl; return true; }
+    bool https_set_content_type(const char* type) { (void)type; return true; }
+    int https_post(const String& body) { (void)body; return -1; }
+    int https_get() { return -1; }
+    String https_body() { return String(); }
+    void https_end() {}
+    bool https_add_header(const char* name, const String& value) { (void)name; (void)value; return true; }
+};
 
 Preferences prefs;   // registro veicoli in NVS (sopravvive allo spegnimento)
 
@@ -51,7 +68,7 @@ Preferences prefs;   // registro veicoli in NVS (sopravvive allo spegnimento)
 #define BATT_CAL_OFFSET  0.30
 // ==========================================================
 
-TinyGsm modem(SerialAT);
+TinyGsmWithHttps modem(SerialAT);
 MPU6050 mpu;
 
 // ===== STATO PERSISTENTE in RTC: sopravvive al deep sleep =====
@@ -541,8 +558,7 @@ String batteria(bool dormiMode = false) {
 // ===================== GPS =====================
 void gpsOn() {
     if (gpsActive) return;
-    if (modem.enableGPS(MODEM_GPS_ENABLE_GPIO, MODEM_GPS_ENABLE_LEVEL)) {
-        modem.enableAGPS();
+    if (modem.enableGPS()) {
         gpsActive = true;
         Serial.println("GPS ON");
     }
@@ -550,7 +566,7 @@ void gpsOn() {
 
 void gpsOff() {
     if (!gpsActive) return;
-    modem.disableGPS(MODEM_GPS_ENABLE_GPIO, !MODEM_GPS_ENABLE_LEVEL);
+    modem.disableGPS();
     gpsActive = false;
     Serial.println("GPS OFF");
 }
@@ -571,9 +587,8 @@ bool getFix(String &out) {
     gpsOn();
     float lat = 0, lon = 0, spd = 0, alt = 0, acc = 0;
     int vsat = 0, usat = 0, yr = 0, mo = 0, dy = 0, hr = 0, mi = 0, se = 0;
-    uint8_t fix = 0;
     for (int i = 0; i < 3; i++) {
-        if (modem.getGPS(&fix, &lat, &lon, &spd, &alt, &vsat, &usat, &acc,
+        if (modem.getGPS(&lat, &lon, &spd, &alt, &vsat, &usat, &acc,
                          &yr, &mo, &dy, &hr, &mi, &se) && lat != 0) {
             lastLat = lat; lastLon = lon; lastSat = vsat; lastAcc = 0;
             String vel = (spd < 3.0) ? "fermo" : (String(spd, 1) + " km/h");
